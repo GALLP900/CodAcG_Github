@@ -48,9 +48,9 @@ async def on_message(message):
               await message.channel.send(f'Hola {username}')
               return
         elif user_message.lower()== "to claire":
-              await message.channel.send(f'to claire!!!')
+              await message.channel.send(f'To Claire!!!')
         elif user_message.lower() == "bye":
-              await message.channel.send(f'Chau {username}')
+              await message.channel.send(f'Chau Salame {username}')
               
 
     
