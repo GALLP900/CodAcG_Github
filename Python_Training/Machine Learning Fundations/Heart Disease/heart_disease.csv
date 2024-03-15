@@ -301,4 +301,4 @@ age,sex,trestbps,chol,cp,exang,fbs,thalach,heart_disease
 68.0,male,144.0,193.0,asymptomatic,0.0,1.0,141.0,presence
 57.0,male,130.0,131.0,asymptomatic,1.0,0.0,115.0,presence
 57.0,female,130.0,236.0,atypical angina,0.0,0.0,174.0,presence
-38.0,male,138.0,175.0,non-anginal pain,0.0,0.0,173.0,absence
+38.1,male,138.0,175.0,non-anginal pain,0.0,0.0,173.0,absence
