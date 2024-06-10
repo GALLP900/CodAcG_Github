@@ -1,0 +1,224 @@
+---
+title: "Investigating the Coronavirus Pandemic"
+output: html_notebook
+---
+
+# Setup
+
+As a reminder, the instructions to this project are formatted in markdown. It will be easiest to read the instructions if you click on "Preview" in RStudio. Doing so will render the markdown to an HTML page for easier reading!
+
+Welcome to your off-platform project focused on Data Manipulation in R! The goal of this project is to get experience working with multiple `.csv` files in RStudio. We'll be creating several data frames and manipulating them to try to find new insights.
+
+In this project we will be looking at data associated with the Coronavirus pandemic from 2020. While this topic isn't your typical lighthearted Codecademy assignment, we felt like it is a excellent way to use your new R skills to understand the world around you. This assignment was written on March 23rd, 2020 &mdash; since you will be taking this assignment in the future, we’re hoping that this can be an interesting historical analysis rather than an ongoing issue.
+
+# Collect and Investigate the Data
+
+We’ve provided three datasets named `corona_confirmed.csv`, `corona_recovered.csv` and `corona_deaths.csv`. For the entirety of this project, we’ll be using these datasets. You can find more recent versions of this data at Johns Hopkins’ data repository on [GitHub](https://github.com/CSSEGISandData/COVID-19).
+
+This is a good opportunity to practice downloading data from GitHub or other repositories. We’re using files found in the `csse_covid_19_time_series` folder. In addition, we recommend looking at some of the projects linked on the GitHub page &mdash; that can help give you a better sense of what type of information you can extract from this data.
+
+For now, load these three `.csv` files into three separate dataframes. Note that we used the `read_csv()` function from the `readr` library. If you load the csv files using a different method, you might have slightly different column names.
+
+Inspect the dataframes to get a sense of how the data is stored (we recommend using `head()`).
+
+```{r message = FALSE}
+library(dplyr)
+library(readr)
+
+# Load the data
+confirmed <-  read_csv("corona_confirmed.csv")
+recovered <-  read_csv("corona_recovered.csv")
+deaths <-  read_csv("corona_deaths.csv")
+
+# Inspect the data
+head(confirmed)
+head(recovered)
+head(deaths)
+```
+
+# Looking At March 22nd, 2020
+
+The format of these three data frames are all the same &mdash; each row contains information about the number of cases in a certain province, state, or country. Every column (other than the columns containing the latitude, longitude, and country name) represents a date. We have data starting on January 1st, 2020 and ending on March 22nd, 2020 (the day this assignment was written).
+
+Let's warm up by finding the total number of confirmed cases on March 22nd, 2020. To do this, we'll use both the `select()` and `sum()` functions. When using the `select()` function, make sure to put the name of the column in backticks (usually found in the top left corner of your keyboard)! This usually isn't necessary, but since the name of the column contains the `/` character, we need backticks! Make sure to do this whenever you're working with these columns.
+
+```{r}
+# Sum the total number of cases on March 22nd
+total_cases <- confirmed %>% select(`3/22/20`) %>% sum()
+total_cases
+```
+
+# Filter By Values
+
+Let's start to filter the data a bit more. Give these three tasks a try:
+
+* How many confirmed cases are there in countries on March 22nd that are north of the equator? (If a country is north of the equator, its latitude is greater than `0`)
+* How many confirmed cases are there in March 22nd in Australia?
+* Can you report both of those values as a percentage of the total number of cases in the world on March 22nd?
+
+You may want to save these results to variables as they will be useful later!
+
+```{r}
+# Filter for countries in the northern hemisphere
+total_cases_north_of_equator <- confirmed %>% filter(Lat > 0) %>% select(`3/22/20`) %>% sum()
+total_cases_north_of_equator
+
+# Filter for Australia cases
+total_australia_cases <- confirmed %>% filter(`Country/Region` == 'Australia') %>% select(`3/22/20`) %>% sum()
+total_australia_cases
+
+# Display percentages
+total_cases_north_of_equator / total_cases * 100
+total_australia_cases / total_cases * 100
+```
+
+# Group By Country
+
+Notice that some countries have multiple rows of data. This happens when a country has information about specific states or provinces. While this information might be useful, it makes it a bit tricky to see the total number of cases by country.
+
+We were able to get the total number of cases in Australia by using `filter()`, but what if we wanted to do this for every country? It would be a pain to have to type every country name into a filter function. Use `group_by()` to create a new data frame containing one row for every `Country/Region`. 
+
+Every column of those new rows should have the sum of the total number of cases for that country for every day. We can use the [`summarize_at()`](https://dplyr.tidyverse.org/reference/summarise_all.html) function to do this. `summarize_at()` takes two parameters:
+
+1. A vector of the columns you want to summarize. In this case we want every column other than `Lat`, `Long`, and `Province/State`. `summarize_at()` only works with numbers, so we'll want to remove the column containing country names. We also don't need to add the latitudes and longitudes. Remember, you can use the `-` symbol to list columns you want to exclude. Also don't forget to use backticks around columns with `/` symbols. For example -\`Province/State\` will exclude that column. These small details get complicated!
+2. The function that you want to apply to the column. In this case, `sum`.
+
+After creating this new data frame inspect it. To confirm you did the `group_by()` correctly, find the row for Australia and confirm the number of cases on March 22nd matches your results from the previous step
+
+```{r}
+# Group by countries
+countries_confirmed <- confirmed %>% group_by(`Country/Region`) %>% summarize_at(vars(-Lat, -Long, -`Province/State`),sum)
+countries_confirmed
+
+# Filter the grouped data set for Australia
+countries_confirmed %>% filter(`Country/Region` == 'Australia') %>% select(`3/22/20`)
+```
+
+# Investigating The Recovered Dataset
+
+Do the same process of grouping by country using the recovered dataset. What percentage of the cases in the `US` have recovered on March 22nd?
+
+```{r}
+# Group by countries
+countries_recovered <- recovered %>% group_by(`Country/Region`) %>% summarize_at(vars(-Lat, -Long, -`Province/State`),sum)
+total_us <- countries_confirmed %>% filter(`Country/Region` == 'US') %>% select(`3/22/20`)
+recovered_us <- countries_recovered %>% filter(`Country/Region` == 'US') %>% select(`3/22/20`)
+recovered_us /total_us * 100
+```
+
+You may see some surprising results &mdash; are there really zero recovered cases in the US? Let's take a closer look at the `US` row in the `recovered` table. Either view the table in RStudio's interface, or print the row in the cell block below. What do you notice about the values as you scroll to March 22nd?
+
+```{r}
+# Filter to inspect the US row
+countries_recovered %>% filter(`Country/Region` == 'US')
+```
+
+It seems like the number of recovered cases is steadily increasing to 17, until March 18th, when it suddenly drops back to 0. This is surprising, and not what we expected! Perhaps we're misunderstanding the format of the data, or perhaps there's an error in reporting the data.
+
+What's the best course of action at this point? One strategy is to investigate the source of the data to truly understand what it is reporting. When we went back to [Johns Hopkins' repository](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data/csse_covid_19_time_series), we found a note saying that the data had moved into a different file. It might be best to use that file!
+
+If we wanted to use the current file, instead of reporting the number of confirmed and recovered cases in the US on March 22nd, we could report the maximum number of confirmed and recovered cases. Let's give that a shot using the `max()` function. Make sure to also use `select()` to remove the `Country/Region` column &mdash; we can't take the max of a row if it contains a string.
+```{r}
+# Find the maximum number of confirmed and recovered cases
+max_confirmed <- countries_confirmed %>% filter(`Country/Region` == 'US') %>% select(-`Country/Region`) %>% max()
+max_recovered <- countries_recovered %>% filter(`Country/Region` == 'US') %>% select(-`Country/Region`) %>% max()
+max_recovered / max_confirmed * 100
+```
+
+# Transposing Data Frames
+
+The code that you just wrote in the last prompt is a little ugly &mdash; we first have to select a particular row by the value in a particular column, remove that column from the row, and then find the maximum value of the remaining values. It would be much easier if we rotated the data frame so rows represented dates and columns represented countries. Try drawing a sketch of what this rotated data frame might look like!
+
+We could then find the maximum value of a country by simply selecting the appropriate column and finding the maximum value in that column. Let's try that! The `t()` function will transpose the data frame so all of the columns become rows. `t()` unfortunately returns a matrix instead of a data frame. If you pipe the result of `t()` through the `as.data.frame()` function, your result will be the transposed data frame. Try transposing one of your data frames by piping it through both `t()` and `as.data.frame()` and call `head()` to investigate it.
+
+```{r}
+# Transpose the data frame
+transposed_confirmed <- countries_confirmed %>% t() %>% as.data.frame()
+transposed_confirmed %>% head()
+```
+
+
+Great! We're almost there. But take a look at the column names. We want the column names to be the countries, but instead, the country names are in the first row. We need to figure out how to change the first row of a data frame into column names. Challenge yourself to try to figure this out on your own in the following code block. We'll walk you through our solution in the following section.
+
+```{r}
+
+```
+
+As usual, we used Google to help solve this problem. Learning how to properly search for answers to your programming questions is an essential skill. In this case,  we specifically searched "r data frame set first row as column names", which led us to a [Stack Overflow page](https://stackoverflow.com/questions/32054368/use-first-row-data-as-column-names-in-r) that suggested using the `janitor` library. That's a cute name for a library &mdash; this `janitor` library will help us clean up our data frame.
+
+First, we installed and loaded the `janitor` package. Then we passed our transposed data frame into the `row_to_names()` function and used the parameter `row_number = 1`.
+
+```{r}
+library(janitor)
+
+# Make the first row the column titles
+transposed_confirmed <- transposed_confirmed %>% row_to_names(row_number = 1)
+transposed_confirmed %>% head()
+```
+
+We're getting closer. If you printed the head of the data frame you just created, you might have noticed that the columns are now of type `<fctr>`, or factor. This was one of the side effects of rotating the data frame. We want to turn all of these columns back into doubles.
+
+To do so, pass your data frame to the [`apply()`](https://www.guru99.com/r-apply-sapply-tapply.html) function. `apply()` takes two parameters in addition to the data set that you're using. The `MARGIN` parameter should be set to `2` &mdash; this tells `apply()` to work with columns rather than rows.
+
+The second parameter should be the function you want to apply to all columns. In this case, we want `as.numeric`.
+
+Finally, after calling `apply()`, pipe the result through `as.data.frame()` to ensure we're still working with a data frame. Print out the head of your result to see what the data now looks like. Look at the data type of the columns now!
+
+```{r}
+# Transform the columns to numeric values
+transposed_confirmed <- apply(transposed_confirmed, 2, as.numeric) %>% as.data.frame()
+head(transposed_confirmed)
+```
+
+Nice work - we got there! Let's see what our hard work allows us to do. Let's once again find the maximum number of cases reported in the `US`. To do so, simply select the `US` column and pipe the result to the `max()` function. This should be the same value that we found before we rotate the data frame.
+
+```{r}
+# Find the maximum number of confirmed cases in the US
+transposed_confirmed %>% select(US) %>% max()
+```
+
+# Extra Credit: Visualization
+
+We put a lot of work into rotating that data frame, and you may be wondering if it was worth it. In this section, we're going to make some basic graphs that demonstrate the value of rotating the data frame.
+
+You may not have been introduced to visualization yet. If this is unfamiliar to you, feel free to skip this section &mdash; in the following section we offer some ideas for more data manipulation challenges using this data set. That being said, if visualization is unfamiliar to you, you can use this as an opportunity to do some independent learning! Challenge yourself to do some research to create the following graph.
+
+Let's build a line graph showing the number of confirmed cases over time for a particular country. To do this, we'll first need to add a new column to our dataset to represent the date (notice that when we rotated our data frame, we lost the column containing the date). The first day in our dataset was January 22nd. Let's represent that as day `1`. January 23rd would then be day `2`, and so on. We want to add a column named `date` that contains the numbers `1` through the total number of rows in the dataset. Use `mutate()` to do this. `nrow()` will help find the number of rows in the dataset. Print out the head of the `date` column to ensure this worked.
+
+```{r}
+# Add the date column
+transposed_confirmed <- transposed_confirmed %>% mutate(date = c(1:nrow(transposed_confirmed)))
+head(select(transposed_confirmed, date))
+transposed_confirmed
+```
+
+Great! Our date column is all set. Let's now graph the number of cases in Italy over the days in our dataset. We'll use the `ggplot2` library to do this. Use a combination of `ggplot()`, `aes()`, and `geom_line()` to make our graph! Once again, if you're unfamiliar with graphing, try to do some online research to learn how to do this!
+
+```{r}
+library(ggplot2)
+# Create a line graph with date on the X axis and number of cases in Italy on the Y axis
+transposed_confirmed %>% ggplot(aes(x = date, y = Italy)) + geom_line()
+```
+
+That line of code is pretty concise. That's one of the reasons why we wanted to rotate the data frame. Having a column containing only the confirmed cases from a particular country made this graph relatively simple to create.
+
+Finally, let's do a bit of work to add a title, and to fix the names of the axes. There are a few different ways to do this, but we used the `labs()` function which takes `x`, `y` and `title` parameters.
+
+```{r}
+# Add a proper title, x label, and y label
+transposed_confirmed %>% ggplot(aes(x = date, y = Italy)) + geom_line() + labs(x = "Number of days since January 22nd, 2020", y = "Number of confirmed cases", title = "Confirmed cases of COVID-19 in Italy")
+```
+
+In the next section we'll give you ideas on ways to continue visualizing this data.
+
+# Further Work
+
+Great work! In this project you have truly refined your data manipulation skills using a real data set. In doing so, we hope that you've seen some of the difficulties you need to work through when working with data. Your data set might have annoying column names. Data may be missing or incorrect. You might need to reshape the data or change its type. Gaining the confidence to master these challenges unique to your dataset is an important part of being a data scientist.
+
+If you'd like to continue working with this data, here are some challenges:
+
+- Find the rate of change. Instead of reporting the total number of confirmed cases in a country, report how many _new_ cases there were that day. Which countries are slowing their rate of infection?
+- Graph multiple countries on a single graph. Let's visually compare the difference between countries.
+- Create a [side by side bar plot](https://rpubs.com/dvdunne/ggplot_two_bars) that shows the number of confirmed cases, recoveries, and deaths every day for a particular country.
+- Find more data. Now that you've gotten comfortable with this dataset, try finding another that can expand your understanding of this pandemic. [The New York Times GitHub page](https://github.com/nytimes/covid-19-data) has a dataset containing information about specific counties in the US. Trying to format this dataset to find more useful information would be a fantastic exercise!
+
